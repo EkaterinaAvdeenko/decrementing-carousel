@@ -23,135 +23,136 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 class CarouselRunRandomTest {
 
 
-    @ParameterizedTest(name = "[1] {0} {1}")
-    @MethodSource({"fullCases", "halfEmptyCases", "overflowCases"})
-    void testCarouselRunWhileNotFinished(String collection, int seed) {
-        Random random = new Random(seed);
+  public static Stream<Arguments> fullCases() {
+    return IntStream.of(
+            1,
+            56,
+            133976,
+            8513884,
+            322368,
+            6854)
+        .mapToObj(i -> arguments("full", i));
+  }
 
-        DecrementingCarousel carousel = generateCarousel(random, collection);
-        CarouselRun run = carousel.run();
+  public static Stream<Arguments> halfEmptyCases() {
+    return IntStream.of(
+            1,
+            56,
+            133976,
+            3678,
+            264807,
+            1238732)
+        .mapToObj(i -> arguments("half", i));
+  }
 
-        List<Integer> runResult = new ArrayList<>();
+  public static Stream<Arguments> overflowCases() {
+    return IntStream.of(
+            1,
+            56,
+            133976,
+            8526458,
+            9656836,
+            98512357)
+        .mapToObj(i -> arguments("over", i));
+  }
 
-        while (!run.isFinished()) {
-            runResult.add(run.next());
-        }
+  private static DecrementingCarousel generateCarousel(final Random random,
+      final String collection) {
+    int elements = 10 + random.nextInt(10);
+    DecrementingCarousel carousel = new DecrementingCarousel(elements);
 
-        List<Boolean> isFinishedResult = new ArrayList<>();
-        for (int i = 0; i < runResult.size(); i++) {
-            isFinishedResult.add(false);
-        }
-        isFinishedResult.add(true);
+    if (collection.equals("half")) {
+      elements -= (random.nextInt(7) + 1);
+    } else if (collection.equals("over")) {
+      elements += (random.nextInt(7) + 1);
+    }
+    for (int i = 0; i < elements; i++) {
+      carousel.addElement(1 + random.nextInt(10));
+    }
+    return carousel;
+  }
 
-        assertEquals(getExpectedRunResult(collection, seed), runResult);
-        assertEquals(getExpectedIsFinishedResult(collection, seed), isFinishedResult);
+  private static List<Integer> readExpectedList(String collection, int seed) {
+    try {
+      return Pattern.compile("\\D+").splitAsStream(
+              Files.readString(
+                  Path.of("src", "test", "resources", collection, seed + ".txt")))
+          .filter(token -> !token.isBlank())
+          .map(Integer::parseInt)
+          .collect(Collectors.toList());
+    } catch (IOException e) {
+      e.printStackTrace();
+      return List.of();
+    }
+  }
+
+  @ParameterizedTest(name = "[1] {0} {1}")
+  @MethodSource({"fullCases", "halfEmptyCases", "overflowCases"})
+  void testCarouselRunWhileNotFinished(String collection, int seed) {
+    Random random = new Random(seed);
+
+    DecrementingCarousel carousel = generateCarousel(random, collection);
+    CarouselRun run = carousel.run();
+
+    List<Integer> runResult = new ArrayList<>();
+
+    while (!run.isFinished()) {
+      runResult.add(run.next());
     }
 
-    @ParameterizedTest(name = "[{index}] {1}")
-    @MethodSource({"fullCases", "halfEmptyCases", "overflowCases"})
-    void testCarouselRunWhileNotNegative(String collection, int seed) {
-        Random random = new Random(seed);
+    List<Boolean> isFinishedResult = new ArrayList<>();
+    for (int i = 0; i < runResult.size(); i++) {
+      isFinishedResult.add(false);
+    }
+    isFinishedResult.add(true);
 
-        DecrementingCarousel carousel = generateCarousel(random, collection);
-        CarouselRun run = carousel.run();
+    assertEquals(getExpectedRunResult(collection, seed), runResult);
+    assertEquals(getExpectedIsFinishedResult(collection, seed), isFinishedResult);
+  }
 
-        List<Integer> runResult = new ArrayList<>();
-        List<Boolean> isFinishedResult = new ArrayList<>();
+  @ParameterizedTest(name = "[{index}] {1}")
+  @MethodSource({"fullCases", "halfEmptyCases", "overflowCases"})
+  void testCarouselRunWhileNotNegative(String collection, int seed) {
+    Random random = new Random(seed);
 
-        isFinishedResult.add(run.isFinished());
-        int nextVal;
-        while ((nextVal = run.next()) != -1) {
-            runResult.add(nextVal);
-            isFinishedResult.add(run.isFinished());
-        }
+    DecrementingCarousel carousel = generateCarousel(random, collection);
+    CarouselRun run = carousel.run();
 
-        assertEquals(getExpectedRunResult(collection, seed), runResult);
-        assertEquals(getExpectedIsFinishedResult(collection, seed), isFinishedResult);
+    List<Integer> runResult = new ArrayList<>();
+    List<Boolean> isFinishedResult = new ArrayList<>();
+
+    isFinishedResult.add(run.isFinished());
+    int nextVal;
+    while ((nextVal = run.next()) != -1) {
+      runResult.add(nextVal);
+      isFinishedResult.add(run.isFinished());
     }
 
-    public static Stream<Arguments> fullCases() {
-        return IntStream.of(
-                        1,
-                        56,
-                        133976,
-                        8513884,
-                        322368,
-                        6854)
-                .mapToObj(i -> arguments("full", i));
-    }
+    assertEquals(getExpectedRunResult(collection, seed), runResult);
+    assertEquals(getExpectedIsFinishedResult(collection, seed), isFinishedResult);
+  }
 
-    public static Stream<Arguments> halfEmptyCases() {
-        return IntStream.of(
-                        1,
-                        56,
-                        133976,
-                        3678,
-                        264807,
-                        1238732)
-                .mapToObj(i -> arguments("half", i));
+  private List<Boolean> getExpectedIsFinishedResult(final String collection, final int seed) {
+    int size = getExpectedRunResult(collection, seed).size();
+    List<Boolean> result = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      result.add(false);
     }
+    result.add(true);
+    return result;
+  }
 
-    public static Stream<Arguments> overflowCases() {
-        return IntStream.of(
-                        1,
-                        56,
-                        133976,
-                        8526458,
-                        9656836,
-                        98512357)
-                .mapToObj(i -> arguments("over", i));
+  private List<Integer> getExpectedRunResult(final String collection, final int seed) {
+    return readExpectedList(collection, seed);
+  }
+
+  private void writeFile(String collection, int seed, String actual) {
+    try {
+      Files.writeString(
+          Path.of("src", "test", "resources", collection, seed + ".txt"),
+          actual + "\n", StandardOpenOption.WRITE, StandardOpenOption.CREATE);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
-
-    private static DecrementingCarousel generateCarousel(final Random random, final String collection) {
-        int elements = 10 + random.nextInt(10);
-        DecrementingCarousel carousel = new DecrementingCarousel(elements);
-
-        if (collection.equals("half")) {
-            elements -= (random.nextInt(7) + 1);
-        } else if (collection.equals("over")) {
-            elements += (random.nextInt(7) + 1);
-        }
-        for (int i = 0; i < elements; i++) {
-            carousel.addElement(1 + random.nextInt(10));
-        }
-        return carousel;
-    }
-
-    private List<Boolean> getExpectedIsFinishedResult(final String collection, final int seed) {
-        int size = getExpectedRunResult(collection, seed).size();
-        List<Boolean> result = new ArrayList<>();
-        for (int i = 0; i < size; i++) {
-            result.add(false);
-        }
-        result.add(true);
-        return result;
-    }
-
-    private List<Integer> getExpectedRunResult(final String collection, final int seed) {
-        return readExpectedList(collection, seed);
-    }
-
-    private static List<Integer> readExpectedList(String collection, int seed) {
-        try {
-            return Pattern.compile("\\D+").splitAsStream(
-                            Files.readString(
-                                    Path.of("src", "test", "resources", collection, seed + ".txt")))
-                    .filter(token -> !token.isBlank())
-                    .map(Integer::parseInt)
-                    .collect(Collectors.toList());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return List.of();
-        }
-    }
-
-    private void writeFile(String collection, int seed, String actual) {
-        try {
-            Files.writeString(
-                    Path.of("src", "test", "resources", collection, seed + ".txt"),
-                    actual + "\n", StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+  }
 }
